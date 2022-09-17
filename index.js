@@ -1,93 +1,80 @@
-const express = require('express');
+// Supports ES6
+// import { create, Whatsapp } from 'venom-bot';
 const venom = require('venom-bot');
-const fileUpload = require('express-fileupload');
-const app = express();
-const { phoneNumberFormatter } = require('./helpers/formatter');
+const axios = require('axios').default
 
-app.use(express.json()); //parser used for requests via post,
-app.use(express.urlencoded({ extended : true }));
-app.use(fileUpload({
-  debug: false
-}));
-
-app.get('/', (req, res) => {
-  res.sendFile('index.html', {
-    root: __dirname
-  });
-});
-
-venom.create(
-  'chat1', 
-    
-    (base64Qrimg, asciiQR, attempts) => {
-      console.log('Number of attempts to read the qrcode: ', attempts);
-      //console.log('Terminal qrcode: ', asciiQR);
-      //console.log('base64 image string qrcode: ', base64Qrimg);
-    },
-     (statusSession, session) => {
-      console.log('Status Session: ', statusSession); 
-      console.log('Session name: ', session);
-    },
-    {
-      headless: false, // Headless chrome
-	multidevice: true, // for version not multidevice use false.(default: true)
-        folderNameToken: 'tokens', 
-	mkdirFolderToken: '',
-        devtools: false, // Open devtools by default
-	
-        useChrome: true, // If false will use Chromium instance
-        debug: false, // Opens a debug session
-        logQR: true, // Logs QR automatically in terminal
-        //browserWS: 'ws://localhost:3030', // If u want to use browserWSEndpoint
-        browserArgs: [
-                    '--no-sandbox',
-					], 
-    })
+venom
+  .create({
+    session: 'm', //name of session
+    multidevice: true // for version not multidevice use false.(default: true)
+  })
   .then((client) => start(client))
   .catch((erro) => {
     console.log(erro);
   });
 
-function start(client){
-const port = '8000'; 
-var server = app.listen(port);
-console.log('Server berjalan pada port %s', server.address().port);
-//sendText
-app.post('/send-message', function (req, res) {
-console.log("Mengirim pesan ke "+req.body.number);	
-        client
-            .sendText(phoneNumberFormatter(req.body.number), req.body.message)
-            .then((result) => {
-         res.json({status: 'success', response: 'message sent successfully'});
+  function start(client) {
+    client.onMessage((message) => {
+      if (message.body.startsWith('/')){
+            axios.post('http://127.0.0.1:8000/response',{
+            user : message.from,
+            message:message.body
+          })
+          .then(function(response){
+            client
+            .sendText(message.from, response.data.reply)
+            .then((result) =>{
+              console.log('Result: ', result);
             })
-            .catch((erro) => {
-                res.json({status: 'error', response: 'The number is not registered'});
-            });
+            .catch((e) =>{
+              console.error('Error when sending: ', e)
+            })
+          }
+          );
+        }
+
+        //---------------------
+
+        else if (message.isMedia === True && message.caption == 'Sticker'){
+          axios.post('http://127.0.0.1:8000/uploadimage',{
+            headers: {
+              'Content-Type': message.body
+            }
+          })
+        }  
+    })
+  }
+
+/*   function start(client) {
+    client.onMessage((message) => {
+      if (message.body.startsWith('/')) {
+        axios.post('http://127.0.0.1:8000/response',{
+          user : message.from,
+          message:message.body
         })
+        .then(function (response){
+          var respuesta;
+          switch(message.body){
+            case 1 : 
+              respuesta;
+            break;
 
+            case 2:
+              respuesta = ' ';
+            break;
+          }
 
+          return respuesta;
 
-//auto reply	
-	  client.onMessage(async (msg) => {
-    try {
-      if (msg.body == '!ping') {
-        // Send a new message to the same chat
-        client.sendText(msg.from, 'pong');
-	  } else if (msg.body == 'hai') {
-        // Send a new message to the same chat
-        client.sendText(msg.from, 'hallo');
-      } else if (msg.body == '!ping reply') {
-        // Send a new message as a reply to the current one
-        client.reply(msg.from, 'pong', msg.id.toString());
+          client
+          .sendText(message.from, response.data.reply)
+          .then((result) => {
+            console.log('Result: ', result); //return object success
+          })
+          .catch((erro) => {
+            console.error('Error when sending: ', erro); //return object error
+          });
+        })
       }
-    } catch (e) {
-      console.log(e);
-    }
-  });
-  
-  client.onStateChange((state) => {
-    console.log('State changed: ', state);
-    if ('CONFLICT'.includes(state)) client.useHere();
-    if ('UNPAIRED'.includes(state)) console.log('logout');
-  });
-}
+    });
+  } */
