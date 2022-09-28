@@ -15,9 +15,9 @@ venom
 
   function start(client) {
     client.onMessage((message) => {
-      if (message.body.startsWith('/')){
-            axios.post('http://127.0.0.1:8000/response',{
-            user : message.from,
+      if (message.from == "51934935843@c.us" && message.isMedia == false){
+            axios.post('http://127.0.0.1:8000/text',{
+            user_id : message.from,
             message:message.body
           })
           .then(function(response){
@@ -32,16 +32,23 @@ venom
           }
           );
         }
-
-        //---------------------
-
-        else if (message.isMedia === True && message.caption == 'Sticker'){
-          axios.post('http://127.0.0.1:8000/uploadimage',{
-            headers: {
-              'Content-Type': message.body
-            }
+        
+        else if(message.isMedia === True && message.isGroupMsg === false){
+          axios.post('http://127.0.0.1:8000/image',{
+              user_id: message.from,
+              message:message.body
           })
-        }  
+          .then(function(response){
+            client
+            .sendText(message.from, response.data.reply)
+            .then((result) => {
+              console.log('Result',result);
+            })
+            .catch((e) => {
+              console.error('Error when sending: ',e)
+            })
+          })
+        }
     })
   }
 
